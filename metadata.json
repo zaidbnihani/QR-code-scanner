@@ -1,0 +1,6 @@
+{
+  "name": "ماسحqr",
+  "description": "ماسح QR code ألترا سريع مع المربع الأزرق المقطع والفتح الفوري للروابط في المتصفح",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
