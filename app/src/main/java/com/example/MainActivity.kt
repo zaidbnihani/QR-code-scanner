@@ -114,7 +114,10 @@ fun FastQrApp(
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     // Automatically check for GitHub updates silently on app open
-    UpdateCheckerEffect()
+    UpdateCheckerEffect(
+        owner = "zaidbnihani",
+        repo = "QR-code-scanner"
+    )
 
     Box(
         modifier = modifier

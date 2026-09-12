@@ -29,15 +29,17 @@ import kotlinx.coroutines.withContext
 /**
  * Composable that checks GitHub for updates silently on launch.
  * If a new release is found via SemVer comparison, shows an AlertDialog.
+ * Downloads the APK directly via DownloadManager and launches FileProvider package installer.
  */
 @Composable
 fun UpdateCheckerEffect(
-    owner: String = "YOUR_GITHUB_OWNER",
-    repo: String = "YOUR_GITHUB_REPO",
+    owner: String = "zaidbnihani",
+    repo: String = "QR-code-scanner",
     currentVersion: String = BuildConfig.VERSION_NAME
 ) {
     val context = LocalContext.current
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var isDownloading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (owner.isNotBlank() && repo.isNotBlank() && owner != "YOUR_GITHUB_OWNER" && repo != "YOUR_GITHUB_REPO") {
@@ -50,7 +52,11 @@ fun UpdateCheckerEffect(
 
     updateInfo?.let { info ->
         AlertDialog(
-            onDismissRequest = { updateInfo = null },
+            onDismissRequest = {
+                if (!isDownloading) {
+                    updateInfo = null
+                }
+            },
             title = {
                 Text(
                     text = "تحديث جديد متوفر (${info.latestVersion})",
@@ -61,7 +67,8 @@ fun UpdateCheckerEffect(
             text = {
                 Column {
                     Text(
-                        text = "يتوفر إصدار أحدث من التطبيق. هل ترغب بالتحديث الآن؟",
+                        text = if (isDownloading) "جاري تنزيل التحديث في الخلفية... سيتم فتح شاشة التثبيت عند الانتهاء."
+                        else "يتوفر إصدار أحدث من التطبيق. هل ترغب بالتحديث الآن؟",
                         fontSize = 14.sp
                     )
                     if (info.releaseNotes.isNotBlank()) {
@@ -84,21 +91,36 @@ fun UpdateCheckerEffect(
                 Button(
                     onClick = {
                         if (info.downloadUrl.isNotBlank()) {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
-                            context.startActivity(intent)
+                            if (info.downloadUrl.contains(".apk", ignoreCase = true)) {
+                                ApkInstaller.downloadAndInstall(
+                                    context = context,
+                                    downloadUrl = info.downloadUrl,
+                                    onDownloadingStarted = {
+                                        isDownloading = true
+                                        updateInfo = null
+                                    }
+                                )
+                            } else {
+                                // Fallback to browser if no direct APK asset was attached to the release
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
+                                context.startActivity(intent)
+                                updateInfo = null
+                            }
                         }
-                        updateInfo = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0066FF))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0066FF)),
+                    enabled = !isDownloading
                 ) {
-                    Text("تحديث الآن", color = Color.White)
+                    Text(if (isDownloading) "جاري التنزيل..." else "تحديث الآن", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { updateInfo = null }
-                ) {
-                    Text("لاحقاً")
+                if (!isDownloading) {
+                    TextButton(
+                        onClick = { updateInfo = null }
+                    ) {
+                        Text("لاحقاً")
+                    }
                 }
             }
         )
